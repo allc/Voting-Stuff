@@ -1,0 +1,6 @@
+__pycache__/
+instance/secret.json
+env_*
+*.pyc
+staging/
+.DS_Store
