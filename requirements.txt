@@ -1,5 +1,5 @@
-flask
-Flask-Dance
+flask==2.2.5
+Flask-Dance==7.1.0
 flask_cors
 requests
 
