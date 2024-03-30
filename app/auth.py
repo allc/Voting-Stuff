@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for, render_template, Blueprint, session, current_app, Response
+from flask import Flask, redirect, url_for, render_template, Blueprint, session, current_app, Response, request
 from flask_dance.contrib.google import make_google_blueprint, google
 from oauthlib.oauth2.rfc6749.errors import TokenExpiredError
 import functools
@@ -31,6 +31,11 @@ def index():
         return redirect(url_for('auth.profile'))
     return render_template('auth/login.html')
 
+
+@bp.route('/api/ballot-form', methods=['POST']):
+def ballot_form():
+    print(request.data)
+    return 'a'
 
 def login_required(view):
     """View decorator that redirects anonymous users to the login page."""
