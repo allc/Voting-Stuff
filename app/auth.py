@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for, render_template, Blueprint, session, current_app
+from flask import Flask, redirect, url_for, render_template, Blueprint, session, current_app, Response
 from flask_dance.contrib.google import make_google_blueprint, google
 from oauthlib.oauth2.rfc6749.errors import TokenExpiredError
 import functools
@@ -20,7 +20,7 @@ def register_google_bp(app):
     google_bp = make_google_blueprint(
         client_id=secrets['client_id'],
         client_secret=secrets['client_secret'],
-        scope=['profile', 'email']
+        scope=['profile', 'email', 'https://www.googleapis.com/auth/admin.directory.group.member.readonly']
     )
     app.register_blueprint(google_bp, url_prefix='/login')
 
@@ -32,8 +32,33 @@ def index():
     return render_template('auth/login.html')
 
 
+def login_required(view):
+    """View decorator that redirects anonymous users to the login page."""
+    @functools.wraps(view)
+    def wrapped_view(**kwargs):
+        if not google.authorized:
+            return redirect(url_for('google.login'))
+        return view(**kwargs)
+
+    return wrapped_view
+
+# Not working
+# def admin_login_required(view):
+#     @functools.wraps(view)
+#     def wrapped_view(**kwargs):
+#         result = login_required(view)(**kwargs)
+#         if isinstance(result, Response) and result.status_code == 302:
+#             return result
+#         else:
+#             return view(**kwargs)
+#     return wrapped_view
+
+
 @bp.route('/logout')
 def logout():
+    if not google.authorized:
+        session.clear()
+        return redirect(url_for('auth.index'))
     # retrieve token
     token = google_bp.token["access_token"]
 
@@ -48,18 +73,8 @@ def logout():
     except TokenExpiredError as e:
         print('token expired, ignoring')
     del google_bp.token  # Delete OAuth token from storage
+    session.clear()
     return redirect(url_for('auth.index'))
-
-
-def login_required(view):
-    """View decorator that redirects anonymous users to the login page."""
-    @functools.wraps(view)
-    def wrapped_view(**kwargs):
-        if not google.authorized:
-            return redirect(url_for('google.login'))
-        return view(**kwargs)
-
-    return wrapped_view
 
 
 @bp.route('/profile')
