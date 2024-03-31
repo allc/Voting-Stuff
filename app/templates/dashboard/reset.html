@@ -1,0 +1,41 @@
+{% extends "dashboard/base.html" %}
+
+{% block dashboard_content %}
+
+<div class="container">
+    <h1 class="title">Reset</h1>
+    <h2 class="subtitle">Dangerous stuff</h2>
+
+    <div class="box">
+        <h1 class="is-size-3">You are about to clear all data</h1>
+        <p>
+            <strong>This control will clear all data from the database. This is irreversible and will remove all data
+                from the
+                database.</strong>
+        </p>
+
+        <br />
+
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="field">
+                <label class="label">Confirm</label>
+                <div class="control">
+                    <input class="input" type="text" placeholder="i know it will drop all database tables" name="confirm"
+                        autocomplete="off" autocorrect="off" spellcheck="false" required>
+                </div>
+                <p class="help"> If you understand the risks, please write <code class="is-unselectable">i know it will drop all database tables</code> in the box above.</p>
+            </div>
+            <div class="control">
+                <button class="button is-danger">
+                    <span>Reset</span>
+                    <span class="icon" aria-hidden="true">
+                        <i class="fas fa-trash"></i>
+                    </span>
+                </button>
+            </div>
+        </form>
+
+    </div>
+
+    {% endblock %}

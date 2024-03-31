@@ -4,3 +4,7 @@ env_*
 *.pyc
 staging/
 .DS_Store
+.vscode/
+voters.txt
+database.sqlite
+config.json

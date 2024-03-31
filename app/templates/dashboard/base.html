@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Voting Stuff{% endblock %}
+
+{% block content %}
+<nav class="navbar is-dark" role="navigation" aria-label="main navigation">
+  <div class="navbar-brand">
+    <div class="navbar-item has-text-weight-bold">
+      Voting Stuff
+    </div>
+
+    <a role="button" class="navbar-burger burger" aria-label="menu" aria-expanded="false" data-target="app__navbar">
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </a>
+  </div>
+
+  <nav id="app__navbar" class="navbar-menu">
+    <div class="navbar-start">
+      <a class="navbar-item" href="{{url_for('dashboard.index')}}">
+        Home
+      </a>
+
+      <a class="navbar-item" href="{{url_for('dashboard.voters')}}">
+        Voters
+      </a>
+
+      <div class="navbar-item has-dropdown is-hoverable">
+        <a class="navbar-link">
+          More
+        </a>
+
+        <div class="navbar-dropdown">
+          <a class="navbar-item" href="{{url_for('dashboard.dashboard_config')}}">
+            Configurations
+          </a>
+          <hr class="navbar-divider">
+          <a class="navbar-item" href="{{url_for('dashboard.reset')}}">
+            Reset Database
+          </a>
+        </div>
+      </div>
+  </nav>
+
+  <div class="navbar-end">
+
+    <div class="navbar-item has-dropdown is-hoverable">
+      <a class="navbar-link">
+        <img src="{{session['image']}}" width="28" height="28" class="img-rounded">
+        &nbsp;&nbsp;{{ session['name']}}
+      </a>
+
+      <div class="navbar-dropdown is-right">
+        <div class="navbar-item">
+          {{ session['email'] }}
+        </div>
+        <a class="navbar-item" href="{{url_for('auth.logout')}}">
+          Logout
+        </a>
+      </div>
+    </div>
+  </div>
+  </div>
+</nav>
+
+{% for message in get_flashed_messages() %}
+<div class="notification {{ message.type }}">
+  <button class="delete" onclick="closeNotification(this)"></button>
+  {{ message.text|safe }}
+</div>
+{% endfor %}
+
+<script type="text/javascript">
+  document.addEventListener('DOMContentLoaded', () => {
+
+    // Get all "navbar-burger" elements
+    const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
+
+    // Check if there are any navbar burgers
+    if ($navbarBurgers.length > 0) {
+
+      // Add a click event on each of them
+      $navbarBurgers.forEach(el => {
+        el.addEventListener('click', () => {
+
+          // Get the target from the "data-target" attribute
+          const target = el.dataset.target;
+          const $target = document.getElementById(target);
+
+          // Toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
+          el.classList.toggle('is-active');
+          $target.classList.toggle('is-active');
+
+        });
+      });
+    }
+
+  });
+
+  const closeNotification = e => e.parentElement.remove()
+</script>
+
+<section class="dashboard__content">
+  {% block dashboard_content %}{% endblock %}
+</section>
+
+{% endblock %}

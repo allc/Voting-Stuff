@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for, render_template, Blueprint, session, current_app, Response, request
+from flask import redirect, url_for, render_template, Blueprint, session, current_app, Response, request
 from flask_dance.contrib.google import make_google_blueprint, google
 from oauthlib.oauth2.rfc6749.errors import TokenExpiredError
 import functools
@@ -6,9 +6,6 @@ import requests
 import json
 
 secrets = json.load(open('instance/secret.json', 'r'))
-
-app = Flask(__name__)
-app.secret_key = secrets['app_secret_key']
 
 bp = Blueprint('auth', __name__)
 
@@ -20,7 +17,7 @@ def register_google_bp(app):
     google_bp = make_google_blueprint(
         client_id=secrets['client_id'],
         client_secret=secrets['client_secret'],
-        scope=['profile', 'email', 'https://www.googleapis.com/auth/admin.directory.group.member.readonly']
+        scope=['profile', 'email']
     )
     app.register_blueprint(google_bp, url_prefix='/login')
 
@@ -31,11 +28,6 @@ def index():
         return redirect(url_for('auth.profile'))
     return render_template('auth/login.html')
 
-
-@bp.route('/api/ballot-form', methods=['POST']):
-def ballot_form():
-    print(request.data)
-    return 'a'
 
 def login_required(view):
     """View decorator that redirects anonymous users to the login page."""

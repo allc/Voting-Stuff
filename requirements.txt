@@ -1,5 +1,7 @@
 flask==2.2.5
 Flask-Dance==7.1.0
+flask-wtf==1.2.1
+email-validator==2.1.1
 flask_cors
 requests
 

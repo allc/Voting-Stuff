@@ -1,0 +1,39 @@
+{% extends "dashboard/base.html" %}
+
+{% block dashboard_content %}
+
+<div class="container">
+    <h1 class="title">Configurations</h1>
+    <h2 class="subtitle">Config stuff</h2>
+
+    <div class="box">
+        <h1 class="is-size-3">Stuff</h1>
+        <p>
+            <strong>This control will clear all data from the database. This is irreversible and will remove all data
+                from the
+                database.</strong>
+        </p>
+
+        <br />
+
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="field">
+                <label class="label">Voting Form URL</label>
+                <div class="control">
+                    <input class="input" type="url" value="{{ voting_form_url }}" name="voting_form_url" required>
+                </div>
+            </div>
+            <div class="control">
+                <button class="button is-primary">
+                    <span>Update</span>
+                    <span class="icon" aria-hidden="true">
+                        <i class="fas fa-check"></i>
+                    </span>
+                </button>
+            </div>
+        </form>
+
+    </div>
+
+    {% endblock %}

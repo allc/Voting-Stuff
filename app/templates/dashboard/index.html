@@ -1,0 +1,15 @@
+{% extends "dashboard/base.html" %}
+
+{% block dashboard_content %}
+
+<div class="container">
+    <h1 class="title">Summary</h1>
+    <h2 class="subtitle">Stats stuff</h2>
+
+    <div>
+        <div>{{ n_voters }} voters</div>
+        <div>Voting form: <a href="{{ voting_form_url }}" target="_blank">{{ voting_form_url }}</a></div>
+    </div>
+</div>
+
+{% endblock %}

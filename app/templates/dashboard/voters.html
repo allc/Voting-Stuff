@@ -1,0 +1,178 @@
+{% extends "dashboard/base.html" %}
+
+{% block dashboard_content %}
+
+<div class="container">
+  <h1 class="title">Voters</h1>
+  <h2 class="subtitle">Voters subtitle</h2>
+
+  <div>
+    {{ voters|length }} voters
+  </div>
+
+  <div class="box">
+    <h1 class="is-size-3">Import Voters</h1>
+    <form method="post" enctype="multipart/form-data">
+      <p>
+        Import voters from a list of email addresses, with one email address per line. Voter IDs will be generated for
+        new voters, and they will be sent an email with a link to vote. Existing voters will keep their existing voter
+        ID. No voters will be removed.
+      </p>
+      <br>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <div class="control">
+          <input type="checkbox" name="notify_all" id="notifyAllCheckBox">
+          <label for="notifyAllCheckBox">Send email to all importing voters</label>
+        </div>
+        <p class="help">Check the checkbox to send email to all voters in the provided file, otherwise only email new
+          voters.</p>
+      </div>
+      <div class="control">
+        <input class="input" type="file" name="voters" accept=".txt" required>
+      </div>
+      <br>
+      <div class="control">
+        <button class="button is-danger">
+          <span>Import</span>
+          <span class="icon" aria-hidden="true">
+            <i class="fas fa-upload"></i>
+          </span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="box">
+    <h1 class="is-size-3">Look Up Voter</h1>
+    <form id="voterLookUpForm">
+      <div class="field">
+        <label class="label">Voter Email</label>
+        <div class="control">
+          <input class="input" type="email" name="voter_email" required>
+        </div>
+      </div>
+      <div class="control">
+        <button class="button is-primary">
+          <span>Lookup</span>
+          <span class="icon" aria-hidden="true">
+            <i class="fas fa-search"></i>
+          </span>
+        </button>
+      </div>
+      <div id="voterLookUpResult"></div>
+    </form>
+  </div>
+
+  <div class="box">
+    <h1 class="is-size-3">Add Voter</h1>
+    <form id="addVoterForm">
+      <div class="field">
+        <label class="label">Voter Email</label>
+        <div class="control">
+          <input class="input" type="email" name="voter_email" required>
+        </div>
+      </div>
+      <div class="control">
+        <button class="button is-warning">
+          <span>Add</span>
+          <span class="icon" aria-hidden="true">
+            <i class="fas fa-plus"></i>
+          </span>
+        </button>
+      </div>
+      <div id="addVoterResult"></div>
+    </form>
+  </div>
+
+  <div class="box">
+    <h1 class="is-size-3">Remove Voter</h1>
+    <form id="removeVoterForm">
+      <p>
+        For the voter becomes ineligible. <strong>This will also remove the voter's vote.</strong>
+      </p>
+      <div class="field">
+        <label class="label">Voter Email</label>
+        <div class="control">
+          <input class="input" type="text" name="voter_email">
+        </div>
+      </div>
+      <div>Or</div>
+      <div class="field">
+        <label class="label">Voter ID</label>
+        <div class="control">
+          <input class="input" type="text" name="voter_id">
+        </div>
+      </div>
+      <div class="control">
+        <button class="button is-danger">
+          <span>Remove</span>
+          <span class="icon" aria-hidden="true">
+            <i class="fas fa-trash"></i>
+          </span>
+        </button>
+      </div>
+      <div id="removeVoterResult"></div>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.getElementById('voterLookUpForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const response = await fetch("{{ url_for('dashboard.voters') }}", { // using POST so 
+      method: 'POST', 
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token() }}',
+      },
+      body: JSON.stringify({
+        action: 'lookup',
+        voter_email: form.voter_email.value,
+      }),
+    });
+    const result = await response.json();
+    const voterLookUpResult = document.getElementById('voterLookUpResult');
+    voterLookUpResult.innerText = JSON.stringify(result, null, 2);
+  });
+  document.getElementById('addVoterForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const response = await fetch("{{ url_for('dashboard.voters') }}", { // using POST so 
+      method: 'POST', 
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token() }}',
+      },
+      body: JSON.stringify({
+        action: 'add',
+        voter_email: form.voter_email.value,
+      }),
+    });
+    const result = await response.json();
+    const voterLookUpResult = document.getElementById('addVoterResult');
+    voterLookUpResult.innerText = JSON.stringify(result, null, 2);
+  });
+  document.getElementById('removeVoterForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const response = await fetch("{{ url_for('dashboard.voters') }}", { // using POST so 
+      method: 'POST', 
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token() }}',
+      },
+      body: JSON.stringify({
+        action: 'remove',
+        voter_email: form.voter_email.value,
+        voter_id: form.voter_id.value,
+      }),
+    });
+    const result = await response.json();
+    const voterLookUpResult = document.getElementById('removeVoterResult');
+    voterLookUpResult.innerText = JSON.stringify(result, null, 2);
+  });
+</script>
+
+{% endblock %}
