@@ -23,7 +23,11 @@ def send_email_to_voter(voter_id, email):
     voting_form_url = db.execute(
         'SELECT voting_form_url FROM Configuration').fetchone()['voting_form_url']
     message = '''
-Follow the link below to vote: {voting_form_url}. Your voter ID is {voter_id}. You will NOT be able to change your votes after submitting! After submitting your vote, please visit {website_base}/status#voter={voter_id} to verify that your vote has been recorded.
+Hi!
+
+Follow the link below to vote: {voting_form_url}. Your voter ID is {voter_id}. You will NOT be able to change your votes after submitting!
+
+After submitting your vote, please visit {website_base}/status?voter={voter_id} to verify that your vote has been recorded.
 '''.format(
         **{'voter_id': voter_id, 'website_base': config['website_base'], 'voting_form_url': voting_form_url})
     if config['actually_send_emails']:
@@ -55,7 +59,7 @@ def add_voter(voter_email, notify_all=False):
         voter_id = uuid4().hex  # Warning: assuming UUID generated is secure and unique
     to_nofity = voter_record is None or notify_all
     if to_nofity:
-        send_email_to_voter(voter_id, voter_email)
+        send_email_to_voter(voter_id, voter_email) # Warning: sending email and adding voter is not atomic
     if voter_record is None:
         db.execute('INSERT INTO voters (voter_id, email_hash) VALUES (?, ?)',
                    (voter_id, email_hash))

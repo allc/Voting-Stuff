@@ -3,37 +3,89 @@
 {% block dashboard_content %}
 
 <div class="container">
-    <h1 class="title">Configurations</h1>
-    <h2 class="subtitle">Config stuff</h2>
+  <h1 class="title">Configurations</h1>
+  <h2 class="subtitle">Config stuff</h2>
 
-    <div class="box">
-        <h1 class="is-size-3">Stuff</h1>
-        <p>
-            <strong>This control will clear all data from the database. This is irreversible and will remove all data
-                from the
-                database.</strong>
-        </p>
-
-        <br />
-
-        <form method="post">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="field">
-                <label class="label">Voting Form URL</label>
-                <div class="control">
-                    <input class="input" type="url" value="{{ voting_form_url }}" name="voting_form_url" required>
-                </div>
-            </div>
-            <div class="control">
-                <button class="button is-primary">
-                    <span>Update</span>
-                    <span class="icon" aria-hidden="true">
-                        <i class="fas fa-check"></i>
-                    </span>
-                </button>
-            </div>
-        </form>
-
-    </div>
-
-    {% endblock %}
+  <div class="box">
+    <h1 class="is-size-3">Voting Form URL</h1>
+    <p>
+      This will be included in the email sent to voters.
+    </p>
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <label class="label">Voting Form URL</label>
+        <div class="control">
+          <input class="input" type="url" value="{{ voting_form_url }}" name="voting_form_url" required>
+        </div>
+      </div>
+      <div class="control">
+        <button class="button is-primary">
+          <span>Update</span>
+          <span class="icon" aria-hidden="true">
+            <i class="fas fa-check"></i>
+          </span>
+        </button>
+      </div>
+    </form>
+  </div>
+  <div class="box">
+    <h1 class="is-size-3">Questions</h1>
+    <p>
+      Set question type to <code>voter_id</code> for validating the ballot. Set to <code>ranking</code> for ranking result, or <code>choice</code> for single choice result.
+    </p>
+    <form id="questionsConfigForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <div class="control">
+          <textarea class="textarea" name="questions_config" required spellcheck="false"
+            id="questionsConfigJsonInpput">{{ questions_json }}</textarea>
+        </div>
+        <br>
+        <div class="control">
+          <button class="button is-primary">
+            <span>Update</span>
+            <span class="icon" aria-hidden="true">
+              <i class="fas fa-check"></i>
+            </span>
+          </button>
+        </div>
+        <br>
+        <div id="questionsConfigResult"></div>
+      </div>
+    </form>
+  </div>
+</div>
+<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
+<script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
+<script>
+  const questionsConfigJsonInpput = document.getElementById('questionsConfigJsonInpput');
+  const questionsConfigEditor = CodeMirror.fromTextArea(questionsConfigJsonInpput, {
+    lineNumbers: true,
+    mode: 'application/json',
+  });
+  questionsConfigEditor.setSize(null, '100%');
+  document.getElementById('questionsConfigForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const questionsConfigJson = questionsConfigJsonInpput.value;
+    try {
+      JSON.parse(questionsConfigJson);
+    } catch (error) {
+      document.getElementById('questionsConfigResult').innerText = `Invalid JSON: ${error.message}`;
+      //return;
+    }
+    const response = await fetch("{{ url_for('dashboard.dashboard_config') }}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token() }}',
+      },
+      body: JSON.stringify({
+        questions_json: questionsConfigJson,
+      }),
+    });
+    const result = await response.json();
+    document.getElementById('questionsConfigResult').innerText = JSON.stringify(result, null, 2);
+  });
+</script>
+{% endblock %}

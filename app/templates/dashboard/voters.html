@@ -12,14 +12,13 @@
 
   <div class="box">
     <h1 class="is-size-3">Import Voters</h1>
-    <form method="post" enctype="multipart/form-data">
+    <form id="importVotersForm" enctype="multipart/form-data">
       <p>
         Import voters from a list of email addresses, with one email address per line. Voter IDs will be generated for
         new voters, and they will be sent an email with a link to vote. Existing voters will keep their existing voter
         ID. No voters will be removed.
       </p>
       <br>
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field">
         <div class="control">
           <input type="checkbox" name="notify_all" id="notifyAllCheckBox">
@@ -40,6 +39,8 @@
           </span>
         </button>
       </div>
+      <div id="importVotersStatus"></div>
+      <div id="importVotersResult"></div>
     </form>
   </div>
 
@@ -67,6 +68,10 @@
   <div class="box">
     <h1 class="is-size-3">Add Voter</h1>
     <form id="addVoterForm">
+      <p>
+        This will add a voter with a new voter ID. If the voter already exists, the voter will keep their existing voter
+        ID. Either way, the voter will be sent an email with a link to vote.
+      </p>
       <div class="field">
         <label class="label">Voter Email</label>
         <div class="control">
@@ -115,14 +120,65 @@
       <div id="removeVoterResult"></div>
     </form>
   </div>
+
+  <div class="box">
+    <h1 class="is-size-3">Download Voters</h1>
+    <p>
+      Download CSV with voter IDs and vote submission time. If choose to download with email hashes, one global salt for
+      the hash will be included too.
+    </p>
+
+    <a class="button is-warning" href="{{ url_for('dashboard.download_voters') }}" download>
+      <span>Download Voters</span>
+      <span class="icon">
+        <i class="fas fa-download"></i>
+      </span>
+    </a>
+
+    <a class="button is-warning" href="{{ url_for('dashboard.download_voters') }}?include_email_hash=true" download>
+      <span>Download With Email Hashes</span>
+      <span class="icon">
+        <i class="fas fa-download"></i>
+      </span>
+    </a>
+  </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"
+  integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA=="
+  crossorigin="anonymous"></script>
 <script>
+  let socket = io();
+  const voterLookUpStatus = document.getElementById('importVotersStatus');
+  socket.on('import_voters_status', (data) => {
+    voterLookUpStatus.innerText = data;
+  });
+  document.getElementById('importVotersForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const voterLookUpResult = document.getElementById('importVotersResult');
+    voterLookUpResult.innerText = '';
+    voterLookUpStatus.innerText = '';
+    const form = e.target;
+    const formData = new FormData(form);
+    if (socket.id) {
+      formData.append('socket_id', socket.id);
+    }
+    e.target.reset();
+    fetch("{{ url_for('dashboard.voters') }}", {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token() }}',
+      },
+      body: formData
+    }).then(response => response.json()).then(result => {
+      voterLookUpResult.innerText = JSON.stringify(result, null, 2);
+    });
+  });
   document.getElementById('voterLookUpForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
-    const response = await fetch("{{ url_for('dashboard.voters') }}", { // using POST so 
-      method: 'POST', 
+    const response = await fetch("{{ url_for('dashboard.voters') }}", { // using POST so voter emails will not be in server logs
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': '{{ csrf_token() }}',
@@ -135,12 +191,13 @@
     const result = await response.json();
     const voterLookUpResult = document.getElementById('voterLookUpResult');
     voterLookUpResult.innerText = JSON.stringify(result, null, 2);
+    form.reset();
   });
   document.getElementById('addVoterForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     const response = await fetch("{{ url_for('dashboard.voters') }}", { // using POST so 
-      method: 'POST', 
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': '{{ csrf_token() }}',
@@ -153,12 +210,13 @@
     const result = await response.json();
     const voterLookUpResult = document.getElementById('addVoterResult');
     voterLookUpResult.innerText = JSON.stringify(result, null, 2);
+    form.reset();
   });
   document.getElementById('removeVoterForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     const response = await fetch("{{ url_for('dashboard.voters') }}", { // using POST so 
-      method: 'POST', 
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': '{{ csrf_token() }}',
@@ -172,6 +230,7 @@
     const result = await response.json();
     const voterLookUpResult = document.getElementById('removeVoterResult');
     voterLookUpResult.innerText = JSON.stringify(result, null, 2);
+    form.reset();
   });
 </script>
 

@@ -6,9 +6,25 @@
     <h1 class="title">Summary</h1>
     <h2 class="subtitle">Stats stuff</h2>
 
-    <div>
-        <div>{{ n_voters }} voters</div>
-        <div>Voting form: <a href="{{ voting_form_url }}" target="_blank">{{ voting_form_url }}</a></div>
+    <div class="box">
+        Voting form: <a href="{{ voting_form_url }}" target="_blank">{{ voting_form_url }}</a>
+    </div>
+
+    <div class="box">
+        {{ n_voters }} voters
+        <br>
+        {{ n_voters_responded }} responded
+    </div>
+
+    <div class="box">
+        <h1 class="is-size-3">Questions</h1>
+        <p>Response counts exclude empty responses</p>
+        <br>
+        <ul>
+            {% for question in questions %}
+            <li>{{ question.question or question.question_id }}: <b>{{ question.n_responses }}</b> responses</li>
+            {% endfor %}
+        </ul>
     </div>
 </div>
 
