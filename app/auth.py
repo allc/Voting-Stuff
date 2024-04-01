@@ -5,6 +5,8 @@ import functools
 import requests
 import json
 
+from app.db import get_db
+
 secrets = json.load(open('instance/secret.json', 'r'))
 
 bp = Blueprint('auth', __name__)
@@ -77,6 +79,8 @@ def logout():
 @bp.route('/profile')
 @login_required
 def profile():
+    if 'name' in session:
+        return redirect(url_for('dashboard.index'))
     # hacky, but this pins the google profile information to the session
     resp = requests.get(
         'https://people.googleapis.com/v1/people/me',
@@ -101,3 +105,27 @@ def profile():
     session['image'] = profile['image']
 
     return redirect(url_for('dashboard.index'))
+
+@bp.route('/status')
+def voter_status():
+    voter_id = request.args.get('voter')
+    if not voter_id:
+        color = 'danger'
+        message = 'No voter ID provided'
+        status_code = 400
+    else:
+        db = get_db()
+        voter_record = db.execute('SELECT * FROM voters WHERE voter_id = ?', (voter_id,)).fetchone()
+        if voter_record is None:
+            color = 'danger'
+            message = 'Invalid voter ID'
+            status_code = 403
+        elif voter_record['voted_at']:
+            color = 'success'
+            message = f'Vote submitted at {voter_record["voted_at"]}'
+            status_code = 200
+        else:
+            color = 'warning'
+            message = 'Vote not recorded'
+            status_code = 200
+    return render_template('status.html', color=color, message=message), status_code

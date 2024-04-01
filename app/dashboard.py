@@ -161,6 +161,7 @@ def dashboard_config():
                 'SELECT COUNT(*) FROM Answers WHERE question_id = ? and answer != ""', (question['question_id'],)).fetchone()[0]
             question['n_responses'] = n_responses
             del question['id']
+            del question['n_responses']
         return render_template('dashboard/config.html', questions_json=json.dumps(questions, indent=2), **config)
     
     if request.method == 'POST':
