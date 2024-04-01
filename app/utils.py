@@ -1,3 +1,4 @@
+from app.config import load_instance_config
 from app.db import get_db
 import hashlib
 import json
@@ -6,9 +7,9 @@ import smtplib
 from email.message import EmailMessage
 from email.utils import formataddr
 
-secrets = json.load(open('instance/secret.json', 'r'))
+config, secrets = load_instance_config()
+
 email_salt = secrets['email_salt'].encode('utf8')
-config = json.load(open('instance/config.json', 'r'))
 
 
 def get_email_hash(email, salt=email_salt):
@@ -38,7 +39,7 @@ After submitting your vote, please visit {website_base}/status?voter={voter_id} 
             (config['email_from_name'], config['email_from_address']))
         email_message['To'] = email
         email_message['Reply-To'] = config['email_reply_to']
-        with smtplib.SMTP(config['smtp_host']) as smtp:
+        with smtplib.SMTP(config['smtp_host'], config.get('smtp_port') or 25) as smtp:
             smtp.starttls()
             smtp.login(secrets['smtp_user'], secrets['smtp_password'])
             smtp.send_message(email_message)
@@ -59,7 +60,8 @@ def add_voter(voter_email, notify_all=False):
         voter_id = uuid4().hex  # Warning: assuming UUID generated is secure and unique
     to_nofity = voter_record is None or notify_all
     if to_nofity:
-        send_email_to_voter(voter_id, voter_email) # Warning: sending email and adding voter is not atomic
+        # Warning: sending email and adding voter is not atomic
+        send_email_to_voter(voter_id, voter_email)
     if voter_record is None:
         db.execute('INSERT INTO voters (voter_id, email_hash) VALUES (?, ?)',
                    (voter_id, email_hash))

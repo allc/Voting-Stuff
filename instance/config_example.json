@@ -1,0 +1,9 @@
+{
+    "website_base": "http://localhost:5000",
+    "actually_send_emails": true,
+    "smtp_host": "localhost",
+    "smtp_port": 25,
+    "email_from_name": "Voting Stuff",
+    "email_from_address": "no-reply@example.com",
+    "email_reply_to": "do-reply@example.com"
+}
