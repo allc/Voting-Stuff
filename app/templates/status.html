@@ -4,9 +4,27 @@
 
 <div class="container">
     <div class="box">
+        <form action="{{ url_for('auth.voter_status') }}" method="get">
+            <div class="field">
+                <label class="label">Voter ID</label>
+                <div class="control">
+                    <input class="input" name="voter" value="{{ voter_id }}" required>
+                </div>
+            </div>
+            <div class="control">
+                <button class="button is-primary">
+                    <span>Show Status</span>
+                    <span class="icon" aria-hidden="true">
+                        <i class="fas fa-search"></i>
+                    </span>
+                </button>
+            </div>
+        </form>
+        {% if message %}
         <div class="notification is-{{ color }}">
             <p>{{ message }}</p>
         </div>
+        {% endif %}
     </div>
 </div>
 

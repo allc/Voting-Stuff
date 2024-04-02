@@ -16,6 +16,7 @@ bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
 
 config, secrets = load_instance_config()
 
+
 @bp.route('/')
 @login_required
 def index():
@@ -38,8 +39,10 @@ def index():
 def voters():
     if request.method == 'GET':
         db = get_db()
-        voter_emails = db.execute('SELECT * FROM voters').fetchall()
-        return render_template('dashboard/voters.html', voters=voter_emails)
+        n_voters = db.execute('SELECT COUNT(*) FROM Voters').fetchone()[0]
+        n_voters_responded = db.execute(
+            'SELECT COUNT(DISTINCT voter_id) FROM Answers').fetchone()[0]
+        return render_template('dashboard/voters.html', n_voters=n_voters, n_voters_responded=n_voters_responded)
 
     if request.method == 'POST':
         if request.content_type == 'application/json':
@@ -128,7 +131,8 @@ def voters():
 
         flasher('Invalid request', 'danger')
         return redirect(url_for('dashboard.voters'))
-    
+
+
 @bp.route('/voters/download')
 @login_required
 def download_voters():
@@ -151,6 +155,11 @@ def download_voters():
     return output.getvalue(), 200, {'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename="voters.csv"'}
 
 
+@bp.route('/results')
+def results():
+    return render_template('dashboard/results.html')
+
+
 @bp.route('/config', methods=['GET', 'POST'])
 @login_required
 def dashboard_config():
@@ -168,7 +177,7 @@ def dashboard_config():
             del question['id']
             del question['n_responses']
         return render_template('dashboard/config.html', questions_json=json.dumps(questions, indent=2), **config)
-    
+
     if request.method == 'POST':
         if 'voting_form_url' in request.form:
             voting_form_url = request.form['voting_form_url']
@@ -178,7 +187,7 @@ def dashboard_config():
             db.commit()
             flasher('Configuration updated successfully', 'success')
             return redirect(url_for('dashboard.dashboard_config'))
-        
+
         if request.content_type == 'application/json':
             if 'questions_json' in request.json:
                 questions_json = request.json['questions_json']
@@ -212,7 +221,7 @@ def dashboard_config():
                     db.execute('INSERT OR REPLACE INTO Questions(question_id, question, question_type) VALUES (?, ?, ?)', (
                         question['question_id'], question.get('question'), question.get('question_type')))
                 db.commit()
-                return {'success': True, 'n_questions': len(question_ids),'n_questions_removed': len(question_remove_ids), 'n_questions_added': len(question_ids - question_ids_db)}
+                return {'success': True, 'n_questions': len(question_ids), 'n_questions_removed': len(question_remove_ids), 'n_questions_added': len(question_ids - question_ids_db)}
         flasher('Invalid request', 'danger')
         return redirect(url_for('dashboard.dashboard_config'))
 

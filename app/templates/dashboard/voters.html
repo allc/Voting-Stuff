@@ -7,7 +7,9 @@
   <h2 class="subtitle">Voters subtitle</h2>
 
   <div>
-    {{ voters|length }} voters
+    {{ n_voters }} voters
+    <br>
+    {{ n_voters_responded }} responded
   </div>
 
   <div class="box">
@@ -125,7 +127,7 @@
     <h1 class="is-size-3">Download Voters</h1>
     <p>
       Download CSV with voter IDs and vote submission time. If choose to download with email hashes, one global salt for
-      the hash will be included too.
+      the hash will be included too. <strong>Emails might be recoverable with hashes and salt, especially with organisation emails with fixed format.</strong>
     </p>
 
     <a class="button is-warning" href="{{ url_for('dashboard.download_voters') }}" download>

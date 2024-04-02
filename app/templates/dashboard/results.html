@@ -3,16 +3,11 @@
 {% block dashboard_content %}
 
 <div class="container">
-    <h1 class="title">Summary</h1>
-    <h2 class="subtitle">Stats stuff</h2>
+    <h1 class="title">Results</h1>
+    <h2 class="subtitle">Exciting and important stuff</h2>
 
     <div class="box">
-        Voting form:
-        {% if voting_form_url %}
-        <a href="{{ voting_form_url }}" target="_blank">{{ voting_form_url }}</a>
-        {% else %}
-        <strong class="has-text-danger">No voting form URL set</strong>
-        {% endif %}
+        Voting form: <a href="{{ voting_form_url }}" target="_blank">{{ voting_form_url }}</a>
     </div>
 
     <div class="box">

@@ -21,16 +21,17 @@
       <a class="navbar-item" href="{{url_for('dashboard.index')}}">
         Home
       </a>
-
       <a class="navbar-item" href="{{url_for('dashboard.voters')}}">
         Voters
+      </a>
+      <a class="navbar-item" href="{{url_for('dashboard.results')}}">
+        Results
       </a>
 
       <div class="navbar-item has-dropdown is-hoverable">
         <a class="navbar-link">
           More
         </a>
-
         <div class="navbar-dropdown">
           <a class="navbar-item" href="{{url_for('dashboard.dashboard_config')}}">
             Configurations

@@ -109,11 +109,9 @@ def profile():
 
 @bp.route('/status')
 def voter_status():
-    voter_id = request.args.get('voter')
+    voter_id = request.args.get('voter').strip()
     if not voter_id:
-        color = 'danger'
-        message = 'No voter ID provided'
-        status_code = 400
+        return render_template('status.html', voter_id=''), 200
     else:
         db = get_db()
         voter_record = db.execute('SELECT * FROM voters WHERE voter_id = ?', (voter_id,)).fetchone()
@@ -129,8 +127,8 @@ def voter_status():
             color = 'warning'
             message = 'Vote not recorded'
             status_code = 200
-    return render_template('status.html', color=color, message=message), status_code
+    return render_template('status.html', color=color, message=message, voter_id=voter_id), status_code
 
-@bp.route('/request', methods=['GET', 'POST'])
+@bp.route('/api/request')
 def request_voter_id():
     return render_template('request.html')
