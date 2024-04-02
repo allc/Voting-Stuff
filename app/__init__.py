@@ -5,7 +5,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_wtf.csrf import CSRFProtect
 from flask_socketio import SocketIO
 
-gv_socketio = SocketIO()
+gv_socketio = SocketIO(cors_allowed_origins="*")
 
 def create_app(test_config=None):
     """Create and configure an instance of the Flask application."""
@@ -68,4 +68,4 @@ def create_socket_app():
     from flask_socketio import SocketIO
 
     # some imports here
-    return SocketIO(app, cors_allowed_origins="*")
+    return SocketIO(app)
