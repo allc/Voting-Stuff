@@ -8,3 +8,4 @@ staging/
 voters.txt
 database.sqlite
 config.json
+.env/

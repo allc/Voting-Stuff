@@ -68,4 +68,4 @@ def create_socket_app():
     from flask_socketio import SocketIO
 
     # some imports here
-    return SocketIO(app)
+    return SocketIO(app, cors_allowed_origins="*")
