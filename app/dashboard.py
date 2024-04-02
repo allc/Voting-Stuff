@@ -46,6 +46,11 @@ def voters():
             if request.json.get('action') == 'lookup':
                 db = get_db()
                 voter_email = request.json['voter_email']
+                try:
+                    voter_email = email_validator.validate_email(
+                        voter_email, check_deliverability=False).email
+                except email_validator.EmailNotValidError:
+                    return {'error': 'Invalid email address'}, 400
                 voter_record = db.execute('SELECT * FROM voters WHERE email_hash = ?',
                                           (get_email_hash(voter_email),)).fetchone()
                 if voter_record is None:

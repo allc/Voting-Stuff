@@ -1,9 +1,13 @@
 from flask import Blueprint, session, render_template, request, redirect, url_for
 import functools
+
+from app.utils import get_email_hash, send_email_to_voter
 from .db import get_db, init_db
 from .common import flasher
 import json
 from uuid import UUID
+from time import time
+from email_validator import validate_email, EmailNotValidError
 
 secrets = json.load(open('instance/secret.json', 'r'))
 
@@ -56,3 +60,29 @@ def ballot_form():
     db.execute('UPDATE voters SET voted_at = ? WHERE voter_id = ?', (request.json['submitDate'], voter_id))
     db.commit()
     return {'success': True}
+
+@bp.route('/request', methods=['POST'])
+def request_voter_id():
+    voter_email = request.form.get('voter_email')
+    if voter_email is None:
+        flasher('Please provide your email address', 'danger')
+    else:
+        try:
+            voter_email = validate_email(voter_email, check_deliverability=False).email
+        except EmailNotValidError as e:
+            flasher(f'Invalid email address: {e}', 'danger')
+            return redirect(url_for('auth.request_voter_id'))
+        db = get_db()
+        email_hash = get_email_hash(voter_email)
+        voter_record = db.execute('SELECT * FROM voters WHERE email_hash = ?', (email_hash,)).fetchone()
+        if voter_record is None:
+            flasher('Voter does not exist', 'danger')
+        else:
+            emailed_at = voter_record['emailed_at']
+            current_time = int(time())
+            if emailed_at and current_time - emailed_at < 60:
+                flasher(f'Please wait {60 - (current_time - emailed_at)} seconds before requesting voter ID', 'danger')
+            else:
+                send_email_to_voter(voter_record['voter_id'], voter_email)
+                flasher('Voter ID sent to email', 'success')
+    return redirect(url_for('auth.request_voter_id'))

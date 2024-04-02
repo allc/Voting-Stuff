@@ -12,6 +12,7 @@ CREATE TABLE Voters (
     voter_id    TEXT NOT NULL,
     email_hash  TEXT NOT NULL,
     voted_at    DATETIME DEFAULT NULL,
+    emailed_at  DATETIME DEFAULT NULL,
 
     UNIQUE (voter_id),
     UNIQUE (email_hash)

@@ -4,6 +4,7 @@ from oauthlib.oauth2.rfc6749.errors import TokenExpiredError
 import functools
 import requests
 import json
+from .common import flasher
 
 from app.db import get_db
 
@@ -129,3 +130,7 @@ def voter_status():
             message = 'Vote not recorded'
             status_code = 200
     return render_template('status.html', color=color, message=message), status_code
+
+@bp.route('/request', methods=['GET', 'POST'])
+def request_voter_id():
+    return render_template('request.html')

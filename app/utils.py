@@ -6,6 +6,7 @@ from uuid import uuid4
 import smtplib
 from email.message import EmailMessage
 from email.utils import formataddr
+from time import time
 
 config, secrets = load_instance_config()
 
@@ -43,6 +44,8 @@ After submitting your vote, please visit {website_base}/status?voter={voter_id} 
             smtp.starttls()
             smtp.login(secrets['smtp_user'], secrets['smtp_password'])
             smtp.send_message(email_message)
+        db.execute('UPDATE Voters SET emailed_at = ? WHERE voter_id = ?', (int(time()), voter_id))
+        db.commit()
     else:
         print('Send email:', message)
 
