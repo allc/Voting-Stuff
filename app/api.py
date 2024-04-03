@@ -25,11 +25,11 @@ def api_key_required(view):
 
 
 @bp.route('/ballot-form', methods=['POST'])
-@api_key_required # calling to this api has to be trusted
+@api_key_required  # calling to this api has to be trusted
 def ballot_form():
     metadata_fields = ['responder', 'submitDate']
     db = get_db()
-    if request.json['responder'] == 'anonymous': # form for associate member only 
+    if request.json['responder'] == 'anonymous':  # form for associate member only
         # Warning: assuming there is only one free-text question, and it's the voter ID
         voter_id_question_record = db.execute(
             'SELECT question_id FROM Questions WHERE question_type = "voter_id"').fetchone()
@@ -51,25 +51,36 @@ def ballot_form():
         voter_id = request.json.get(voter_id_question_id).strip()
         if voter_id is None:
             return {'error': 'Voter ID not found in request'}, 400
-        if not re.match(r'^ASSOC\d+$', voter_id, re.IGNORECASE): # only associate member voter ID can be user submitted through the form field
+        # only associate member voter ID can be user submitted through the form field
+        if not re.match(r'^ASSOC\d+$', voter_id, re.IGNORECASE):
             return {'error': 'Not associate member voter ID'}, 403
+        voter_id_hash = get_hash(voter_id, to_lower=True)
         voter_record = db.execute(
-            'SELECT * FROM Voters WHERE voter_id_hash = ?', (get_hash(voter_id, to_lower=True),)).fetchone()
+            'SELECT * FROM Voters WHERE voter_id_hash = ?', (voter_id_hash,)).fetchone()
         if voter_record is None:
             return {'error': 'Invalid voter ID'}, 403
         if voter_record['voted_at']:
             return {'error': 'Voter has already voted'}, 403
     else:
         voter_id_question_id = None
-        voter_id = request.json['responder'].strip().split('@')[0] # voter ID is the email address without domain, assuming email is in simple format
+        # voter ID is the email address without domain, assuming email is in simple format
+        voter_id = request.json['responder'].strip().split('@')[0]
+        voter_id_hash = get_hash(voter_id, to_lower=True)
         voter_record = db.execute(
-            'SELECT * FROM Voters WHERE voter_id_hash = ?', (get_hash(voter_id, to_lower=True),)).fetchone()
+            'SELECT * FROM Voters WHERE voter_id_hash = ?', (voter_id_hash,)).fetchone()
         if voter_record is None:
-            return {'error': 'Invalid voter ID'}, 403
+            if request.headers.get('X-Do-Not-Check-Voter-ID') == 'true':
+                voter_id_hash = get_hash(voter_id)
+                db.execute(
+                    'INSERT INTO Voters (voter_id_hash) VALUES (?)', (voter_id_hash,))
+            else:
+                return {'error': 'Invalid voter ID'}, 403
+        else:
+            if voter_record['voted_at']:
+                return {'error': 'Voter has already voted'}, 403
     for question_id, answer in request.json.items():
         if question_id in metadata_fields:
             continue
-        voter_id_hash = get_hash(voter_id, to_lower=True)
         db.execute('INSERT OR IGNORE INTO Questions (question_id, question_type) VALUES (?, ?)',
                    (question_id, 'voter_id' if question_id == voter_id_question_id else ''))
         db.execute('INSERT INTO Answers (voter_id_hash, question_id, answer) VALUES (?, ?, ?)',
