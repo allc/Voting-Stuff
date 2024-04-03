@@ -5,7 +5,6 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_wtf.csrf import CSRFProtect
 from flask_socketio import SocketIO
 
-gv_socketio = SocketIO(cors_allowed_origins="*")
 
 def create_app(test_config=None):
     """Create and configure an instance of the Flask application."""
@@ -37,8 +36,6 @@ def create_app(test_config=None):
     else:
         # load the test config if passed in
         app.config.update(test_config)
-
-    gv_socketio.init_app(app)
 
     # register the database commands
     from . import db

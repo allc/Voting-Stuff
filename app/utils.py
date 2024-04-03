@@ -10,14 +10,16 @@ from time import time
 
 config, secrets = load_instance_config()
 
-email_salt = secrets['email_salt'].encode('utf8')
+salt = secrets['salt'].encode('utf8')
 
 
-def get_email_hash(email, salt=email_salt):
-    '''This is not for vote anonymity, but to not store email addresses in plaintext in the database.
-    It is still possible to recovery the email addresses, especially for organisational emails with fixed formats.
+def get_hash(string, salt=salt, to_lower=False):
+    '''This is not for vote anonymity, but to not store voter IDs in plaintext in the database.
+    It is still possible to recovery the voter IDs
     '''
-    return hashlib.sha256(email.encode('utf8') + salt).hexdigest()
+    if to_lower:
+        string = string.lower()
+    return hashlib.sha256(string.encode('utf8') + salt).hexdigest()
 
 
 def send_email_to_voter(voter_id, email):
@@ -50,23 +52,15 @@ After submitting your vote, please visit {website_base}/status?voter={voter_id} 
         print('Send email:', message)
 
 
-def add_voter(voter_email, notify_all=False):
+def add_voter(voter_id):
     db = get_db()
     # Warning: assuming email hashing is secure and no collisions
-    email_hash = get_email_hash(voter_email)
+    voter_id_hash = get_hash(voter_id, to_lower=True)
     voter_record = db.execute(
-        'SELECT * FROM voters WHERE email_hash = ?', (email_hash,)).fetchone()
+        'SELECT * FROM Voters WHERE voter_id_hash = ?', (voter_id_hash,)).fetchone()
     is_new_voter = voter_record is None
-    if voter_record is not None:
-        voter_id = voter_record['voter_id']
-    else:
-        voter_id = uuid4().hex  # Warning: assuming UUID generated is secure and unique
-    to_nofity = voter_record is None or notify_all
-    if to_nofity:
-        # Warning: sending email and adding voter is not atomic
-        send_email_to_voter(voter_id, voter_email)
     if voter_record is None:
-        db.execute('INSERT INTO voters (voter_id, email_hash) VALUES (?, ?)',
-                   (voter_id, email_hash))
+        db.execute('INSERT INTO Voters (voter_id_hash) VALUES (?)',
+                   (voter_id_hash,))
     db.commit()
-    return (voter_id, email_hash, is_new_voter)
+    return (voter_id_hash, is_new_voter)

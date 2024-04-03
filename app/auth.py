@@ -5,6 +5,7 @@ import functools
 import requests
 import json
 from .common import flasher
+from .utils import get_hash
 
 from app.db import get_db
 
@@ -114,7 +115,7 @@ def voter_status():
         return render_template('status.html', voter_id=''), 200
     else:
         db = get_db()
-        voter_record = db.execute('SELECT * FROM voters WHERE voter_id = ?', (voter_id,)).fetchone()
+        voter_record = db.execute('SELECT * FROM voters WHERE voter_id_hash = ?', (get_hash(voter_id),)).fetchone()
         if voter_record is None:
             color = 'danger'
             message = 'Invalid voter ID'
@@ -129,6 +130,6 @@ def voter_status():
             status_code = 200
     return render_template('status.html', color=color, message=message, voter_id=voter_id), status_code
 
-@bp.route('/api/request')
-def request_voter_id():
-    return render_template('request.html')
+# @bp.route('/request')
+# def request_voter_id():
+#     return render_template('request.html')

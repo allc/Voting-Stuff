@@ -5,10 +5,9 @@ from app.config import load_instance_config
 from .auth import login_required
 from .db import get_db, init_db
 from .common import flasher
-from .utils import get_email_hash, send_email_to_voter, add_voter
+from .utils import get_hash, send_email_to_voter, add_voter
 import json
 import email_validator
-from . import gv_socketio
 import csv
 import io
 
@@ -23,7 +22,7 @@ def index():
     db = get_db()
     n_voters = db.execute('SELECT COUNT(*) FROM Voters').fetchone()[0]
     n_voters_responded = db.execute(
-        'SELECT COUNT(DISTINCT voter_id) FROM Answers').fetchone()[0]
+        'SELECT COUNT(DISTINCT voter_id_hash) FROM Answers').fetchone()[0]
     questions = db.execute('SELECT * FROM Questions').fetchall()
     questions = list(map(dict, questions))
     for question in questions:
@@ -41,92 +40,59 @@ def voters():
         db = get_db()
         n_voters = db.execute('SELECT COUNT(*) FROM Voters').fetchone()[0]
         n_voters_responded = db.execute(
-            'SELECT COUNT(DISTINCT voter_id) FROM Answers').fetchone()[0]
+            'SELECT COUNT(DISTINCT voter_id_hash) FROM Answers').fetchone()[0]
         return render_template('dashboard/voters.html', n_voters=n_voters, n_voters_responded=n_voters_responded)
 
     if request.method == 'POST':
         if request.content_type == 'application/json':
             if request.json.get('action') == 'lookup':
                 db = get_db()
-                voter_email = request.json['voter_email']
-                try:
-                    voter_email = email_validator.validate_email(
-                        voter_email, check_deliverability=False).email
-                except email_validator.EmailNotValidError:
-                    return {'error': 'Invalid email address'}, 400
-                voter_record = db.execute('SELECT * FROM voters WHERE email_hash = ?',
-                                          (get_email_hash(voter_email),)).fetchone()
+                voter_id = request.json.get('voter_id').strip()
+                if not voter_id:
+                    return {'error': 'No voter ID provided'}, 400
+                voter_record = db.execute('SELECT * FROM Voters WHERE voter_id_hash = ?',
+                                          (get_hash(voter_id, to_lower=True),)).fetchone()
                 if voter_record is None:
                     return {'error': 'Voter not found'}, 404
-                return {'voter_id': voter_record['voter_id'], 'email_hash': voter_record['email_hash'], 'voter_email': voter_email, 'voted_at': voter_record['voted_at']}
+                return {'voter_id_hash': voter_record['voter_id_hash'], 'voter_id': voter_id, 'voted_at': voter_record['voted_at']}
 
             if request.json.get('action') == 'add':
-                try:
-                    voter_email = email_validator.validate_email(
-                        request.json['voter_email'], check_deliverability=False).email
-                except email_validator.EmailNotValidError:
-                    return {'error': 'Invalid email address'}, 400
-                voter_id, email_hash, is_new_voter = add_voter(
-                    voter_email, True)
-                return {'voter_id': voter_id, 'email_hash': email_hash, 'is_new_voter': is_new_voter, 'voter_email': voter_email}
+                voter_id = request.json.get('voter_id').strip()
+                voter_id_hash, is_new_voter = add_voter(
+                    voter_id)
+                return {'voter_id_hash': voter_id_hash, 'is_new_voter': is_new_voter, 'voter_id': voter_id}
 
             if request.json.get('action') == 'remove':
-                voter_email = request.json.get('voter_email')
-                if voter_email:
-                    db = get_db()
-                    voter_record = db.execute(
-                        'SELECT * FROM voters WHERE email_hash = ?', (get_email_hash(voter_email),)).fetchone()
-                    if voter_record is None:
-                        return {'error': 'Voter not found'}, 404
-                    voter_id = voter_record['voter_id']
-                    db.execute(
-                        'DELETE FROM Answers WHERE voter_id = ?', (voter_id,))
-                    db.execute('DELETE FROM Voters WHERE email_hash = ?',
-                               (voter_record['email_hash'],))
-                    db.commit()
-                    return {'message': 'Voter removed successfully', 'voter_id': voter_record['voter_id'], 'email_hash': voter_record['email_hash'], 'voter_email': voter_email, 'voted_at': voter_record['voted_at']}
-                voter_id = request.json.get('voter_id')
+                voter_id = request.json.get('voter_id').strip()
                 if voter_id:
                     db = get_db()
+                    voter_id_hash = get_hash(voter_id, to_lower=True)
                     voter_record = db.execute(
-                        'SELECT * FROM voters WHERE voter_id = ?', (voter_id,)).fetchone()
+                        'SELECT * FROM Voters WHERE voter_id_hash = ?', (voter_id_hash,)).fetchone()
                     if voter_record is None:
                         return {'error': 'Voter not found'}, 404
                     db.execute(
-                        'DELETE FROM Answers WHERE voter_id = ?', (voter_id,))
-                    db.execute('DELETE FROM Voters WHERE voter_id = ?',
-                               (voter_record['voter_id'],))
+                        'DELETE FROM Answers WHERE voter_id_hash = ?', (voter_id_hash,))
+                    db.execute('DELETE FROM Voters WHERE voter_id_hash = ?',
+                               (voter_id_hash,))
                     db.commit()
-                    return {'message': 'Voter removed successfully', 'voter_id': voter_record['voter_id'], 'email_hash': voter_record['email_hash']}
-                return {'error': 'No voter email or ID provided'}, 400
+                    return {'message': 'Voter removed successfully', 'voter_id': voter_id, 'voter_id_hash': voter_id_hash, 'voted_at': voter_record['voted_at']}
+                return {'error': 'No voter ID provided'}, 400
 
         if request.files['voters']:
-            notify_all = request.form.get('notify_all', False)
-            voter_emails = request.files['voters']
-            try:
-                voter_emails = [email_validator.validate_email(voter.decode('utf8').strip(
-                ), check_deliverability=False).email for voter in voter_emails.readlines() if voter.strip() != b'' and voter.strip()[0] != b'#']
-            except email_validator.EmailNotValidError:
-                flasher('Invalid email addresses in the provided list', 'danger')
-                return redirect(url_for('dashboard.voters'))
-            n_importing_voters = len(voter_emails)
-            voter_emails = set(voter_emails)
-            n_unique_importing_voters = len(voter_emails)
-            socket_id = request.form.get('socket_id', None)
-            if socket_id:
-                gv_socketio.emit(
-                    'import_voters_status', f'Importing {n_importing_voters} voters, with {n_unique_importing_voters} being unique.', room=socket_id)
+            voter_ids = request.files['voters']
+            voter_ids = [voter_id.decode('utf8').strip() for voter_id in voter_ids.readlines() if voter_id.strip() != b'' and voter_id.strip()[0] != b'#']
+            n_importing_voters = len(voter_ids)
+            voter_ids = set(voter_ids)
+            n_unique_importing_voters = len(voter_ids)
             db = get_db()
             n_existing_voters = 0
             n_new_voters = 0
-            for voter_email in voter_emails:
-                if add_voter(voter_email, notify_all)[1]:
+            for voter_id in voter_ids:
+                if add_voter(voter_id)[1]:
                     n_new_voters += 1
                 else:
                     n_existing_voters += 1
-                if socket_id:
-                    gv_socketio.emit(
-                        'import_voters_status', f'Imported {n_new_voters} new voters, {n_existing_voters} existing voters.\nProcessed {n_new_voters + n_existing_voters}/{n_importing_voters} voters.', room=socket_id)
             return {'n_importing_voters': n_importing_voters, 'n_unique_importing_voters': n_unique_importing_voters, 'n_existing_voters': n_existing_voters, 'n_new_voters': n_new_voters}
 
         flasher('Invalid request', 'danger')
@@ -136,18 +102,13 @@ def voters():
 @bp.route('/voters/download')
 @login_required
 def download_voters():
-    include_email_hash = request.args.get('include_email_hash', False)
     db = get_db()
-    voters = db.execute('SELECT * FROM voters').fetchall()
+    voters = db.execute('SELECT * FROM Voters').fetchall()
     if not voters:
         flasher('No voters to download', 'danger')
         return redirect(url_for('dashboard.voters'))
     voters = list(map(dict, voters))
-    if not include_email_hash:
-        for voter in voters:
-            del voter['email_hash']
-    else:
-        voters[0]['global_salt'] = secrets['email_salt']
+    voters[0]['global_salt'] = secrets['salt']
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=voters[0].keys())
     writer.writeheader()

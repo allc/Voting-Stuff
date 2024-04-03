@@ -16,19 +16,9 @@
     <h1 class="is-size-3">Import Voters</h1>
     <form id="importVotersForm" enctype="multipart/form-data">
       <p>
-        Import voters from a list of email addresses, with one email address per line. Voter IDs will be generated for
-        new voters, and they will be sent an email with a link to vote. Existing voters will keep their existing voter
-        ID. No voters will be removed.
+        Import voters from a list of student IDs (format S1234567) or EUSA associate account IDs, with one ID per line. Existing voters will be kept.
       </p>
       <br>
-      <div class="field">
-        <div class="control">
-          <input type="checkbox" name="notify_all" id="notifyAllCheckBox">
-          <label for="notifyAllCheckBox">Send email to all importing voters</label>
-        </div>
-        <p class="help">Check the checkbox to send email to all voters in the provided file, otherwise only email new
-          voters.</p>
-      </div>
       <div class="control">
         <input class="input" type="file" name="voters" accept=".txt" required>
       </div>
@@ -41,7 +31,6 @@
           </span>
         </button>
       </div>
-      <div id="importVotersStatus"></div>
       <div id="importVotersResult"></div>
     </form>
   </div>
@@ -50,9 +39,9 @@
     <h1 class="is-size-3">Look Up Voter</h1>
     <form id="voterLookUpForm">
       <div class="field">
-        <label class="label">Voter Email</label>
+        <label class="label">Voter ID</label>
         <div class="control">
-          <input class="input" type="email" name="voter_email" required>
+          <input class="input" name="voter_id" required>
         </div>
       </div>
       <div class="control">
@@ -70,14 +59,10 @@
   <div class="box">
     <h1 class="is-size-3">Add Voter</h1>
     <form id="addVoterForm">
-      <p>
-        This will add a voter with a new voter ID. If the voter already exists, the voter will keep their existing voter
-        ID. Either way, the voter will be sent an email with a link to vote.
-      </p>
       <div class="field">
-        <label class="label">Voter Email</label>
+        <label class="label">Voter ID</label>
         <div class="control">
-          <input class="input" type="email" name="voter_email" required>
+          <input class="input" name="voter_id" required>
         </div>
       </div>
       <div class="control">
@@ -99,13 +84,6 @@
         For the voter becomes ineligible. <strong>This will also remove the voter's vote.</strong>
       </p>
       <div class="field">
-        <label class="label">Voter Email</label>
-        <div class="control">
-          <input class="input" type="text" name="voter_email">
-        </div>
-      </div>
-      <div>Or</div>
-      <div class="field">
         <label class="label">Voter ID</label>
         <div class="control">
           <input class="input" type="text" name="voter_id">
@@ -126,8 +104,7 @@
   <div class="box">
     <h1 class="is-size-3">Download Voters</h1>
     <p>
-      Download CSV with voter IDs and vote submission time. If choose to download with email hashes, one global salt for
-      the hash will be included too. <strong>Emails might be recoverable with hashes and salt, especially with organisation emails with fixed format.</strong>
+      Download CSV with voter ID hashes and vote submission time. One global salt for the hash will be included too. <strong>Voter ID might be recoverable with hashes and salt.</strong>
     </p>
 
     <a class="button is-warning" href="{{ url_for('dashboard.download_voters') }}" download>
@@ -136,35 +113,16 @@
         <i class="fas fa-download"></i>
       </span>
     </a>
-
-    <a class="button is-warning" href="{{ url_for('dashboard.download_voters') }}?include_email_hash=true" download>
-      <span>Download With Email Hashes</span>
-      <span class="icon">
-        <i class="fas fa-download"></i>
-      </span>
-    </a>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"
-  integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA=="
-  crossorigin="anonymous"></script>
 <script>
-  let socket = io();
-  const voterLookUpStatus = document.getElementById('importVotersStatus');
-  socket.on('import_voters_status', (data) => {
-    voterLookUpStatus.innerText = data;
-  });
   document.getElementById('importVotersForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const voterLookUpResult = document.getElementById('importVotersResult');
     voterLookUpResult.innerText = '';
-    voterLookUpStatus.innerText = '';
     const form = e.target;
     const formData = new FormData(form);
-    if (socket.id) {
-      formData.append('socket_id', socket.id);
-    }
     e.target.reset();
     fetch("{{ url_for('dashboard.voters') }}", {
       method: 'POST',
@@ -187,7 +145,7 @@
       },
       body: JSON.stringify({
         action: 'lookup',
-        voter_email: form.voter_email.value,
+        voter_id: form.voter_id.value,
       }),
     });
     const result = await response.json();
@@ -206,7 +164,7 @@
       },
       body: JSON.stringify({
         action: 'add',
-        voter_email: form.voter_email.value,
+        voter_id: form.voter_id.value,
       }),
     });
     const result = await response.json();
@@ -225,7 +183,6 @@
       },
       body: JSON.stringify({
         action: 'remove',
-        voter_email: form.voter_email.value,
         voter_id: form.voter_id.value,
       }),
     });

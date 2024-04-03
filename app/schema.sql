@@ -9,13 +9,10 @@ DROP TABLE IF EXISTS Answers;
 
 CREATE TABLE Voters (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    voter_id    TEXT NOT NULL,
-    email_hash  TEXT NOT NULL,
+    voter_id_hash    TEXT NOT NULL,
     voted_at    DATETIME DEFAULT NULL,
-    emailed_at  DATETIME DEFAULT NULL,
 
-    UNIQUE (voter_id),
-    UNIQUE (email_hash)
+    UNIQUE (voter_id_hash)
 );
 
 CREATE TABLE Questions (
@@ -29,11 +26,11 @@ CREATE TABLE Questions (
 
 CREATE TABLE Answers (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    voter_id    TEXT NOT NULL,
+    voter_id_hash    TEXT NOT NULL,
     question_id TEXT NOT NULL,
     answer      TEXT,
 
-    FOREIGN KEY (voter_id) REFERENCES Voters(voter_id) ON DELETE CASCADE,
+    FOREIGN KEY (voter_id_hash) REFERENCES Voters(voter_id_hash) ON DELETE CASCADE,
     FOREIGN KEY (question_id) REFERENCES Questions(question_id)
 );
 
