@@ -1,0 +1,3 @@
+[submodule "app/ranked-pairs-voting"]
+	path = app/ranked_pairs_voting
+	url = https://git.tardisproject.uk/chiv/ranked-pairs-voting.git

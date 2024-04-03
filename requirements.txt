@@ -8,3 +8,7 @@ requests
 # socketio
 flask-socketio
 eventlet
+
+openpyxl==3.0.10
+rich==13.3.4
+networkx==3.1

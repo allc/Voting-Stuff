@@ -70,7 +70,7 @@ def ballot_form():
         voter_record = db.execute(
             'SELECT * FROM Voters WHERE voter_id_hash = ?', (voter_id_hash,)).fetchone()
         if voter_record is None:
-            if request.headers.get('X-Eligible-Voter-ID') == 'true': # forms are always submitted by eligible voters, still checks if the voter has voted
+            if request.headers.get('X-Voter-ID-Always-Eligible') == 'true': # forms are always submitted by eligible voters, still checks if the voter has voted
                 voter_id_hash = get_hash(voter_id)
                 db.execute(
                     'INSERT INTO Voters (voter_id_hash) VALUES (?)', (voter_id_hash,))

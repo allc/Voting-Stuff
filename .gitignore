@@ -9,3 +9,4 @@ voters.txt
 database.sqlite
 config.json
 .env/
+app/static/results/

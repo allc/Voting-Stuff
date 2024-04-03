@@ -47,7 +47,8 @@ CREATE TABLE Stats (
     id          INTEGER PRIMARY KEY DEFAULT 0,
     form_received_count INTEGER DEFAULT 0,
     form_accepted_count INTEGER DEFAULT 0,
-    form_rejected_count INTEGER DEFAULT 0
+    form_rejected_count INTEGER DEFAULT 0,
+    results_id TEXT DEFAULT NULL
 );
 
 INSERT INTO Stats (form_received_count, form_accepted_count, form_rejected_count) VALUES (0, 0, 0);

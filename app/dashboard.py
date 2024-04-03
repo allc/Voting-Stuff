@@ -10,6 +10,19 @@ import json
 import email_validator
 import csv
 import io
+import openpyxl
+from collections import Counter, defaultdict
+from .ranked_pairs_voting.src.ranked_pairs_voting import Ballot, Pair, get_pairs, sort_pairs, build_lock_graph, get_winner_from_graph
+from uuid import uuid4
+import os
+import shutil
+from time import time
+from datetime import datetime
+import networkx as nx
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('agg')
+
 
 bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
 
@@ -31,6 +44,16 @@ def index():
         n_responses = db.execute(
             'SELECT COUNT(*) FROM Answers WHERE question_id = ? and answer != ""', (question['question_id'],)).fetchone()[0]
         question['n_responses'] = n_responses
+    question_names = set([question['question']
+                         for question in questions if question['question']])
+    questions_ = [
+        {
+            'question': question_name,
+            'n_responses': sum([question['n_responses'] for question in questions if question['question'] == question_name])
+        } for question_name in question_names
+    ]
+    questions = [
+        question for question in questions if not question['question']] + questions_
     stats = dict(db.execute('SELECT * FROM Stats').fetchone())
     del stats['id']
     return render_template('dashboard/index.html', n_voters=n_voters, n_voters_responded=n_voters_responded, questions=questions, **config, **stats)
@@ -84,7 +107,8 @@ def voters():
 
         if request.files['voters']:
             voter_ids = request.files['voters']
-            voter_ids = [voter_id.decode('utf8').strip() for voter_id in voter_ids.readlines() if voter_id.strip() != b'' and voter_id.strip()[0] != b'#']
+            voter_ids = [voter_id.decode('utf8').strip() for voter_id in voter_ids.readlines(
+            ) if voter_id.strip() != b'' and voter_id.strip()[0] != b'#']
             n_importing_voters = len(voter_ids)
             voter_ids = set(voter_ids)
             n_unique_importing_voters = len(voter_ids)
@@ -121,7 +145,158 @@ def download_voters():
 
 @bp.route('/results')
 def results():
-    return render_template('dashboard/results.html')
+    db = get_db()
+    results_id = db.execute('SELECT results_id FROM Stats').fetchone()[0]
+    if not os.path.exists(f'app/static/results/{results_id}'):
+        results_id = None
+    if results_id is None:
+        return render_template('dashboard/results.html')
+    results_folder = f'app/static/results/{results_id}'
+    metadata = json.load(
+        open(f'{results_folder}/metadata.json'))
+    updated_at = datetime.fromtimestamp(metadata['timestamp'])
+    ranking_questions = []
+    for question in metadata['questions']:
+        if question['question_type'] == 'ranking':
+            try:
+                question_results = json.load(open(f'{results_folder}/{question["question_result_uuid"]}.json'))
+            except:
+                continue
+            question_results['question'] = question['question']
+            ranking_questions.append(question_results)
+    choices_questions = []
+    for question in metadata['questions']:
+        if question['question_type'] == 'choices':
+            try:
+                question_results = json.load(open(f'{results_folder}/{question["question_result_uuid"]}.json'))
+            except:
+                continue
+            question_results['question'] = question['question']
+            choices_questions.append(question_results)
+    return render_template('dashboard/results.html', updated_at=updated_at, ignored_questions=[q['question'] for q in metadata['ignored_questions']], warnings=metadata['warnings'], ranking_questions=ranking_questions, choices_questions=choices_questions, results_id=results_id)
+
+
+@bp.route('/results/update', methods=['POST'])
+def update_results():
+    db = get_db()
+    metadata = {
+        'timestamp': int(time()),
+        'questions': [],
+        'ignored_questions': [],
+        'warnings': []
+    }
+    ballots = db.execute(
+        'SELECT * FROM Questions JOIN Answers ON Questions.question_id = Answers.question_id').fetchall()
+    questions = {}
+    for ballot in ballots:
+        question_id = ballot['question_id']
+        question = ballot['question'] or question_id
+        if question in questions:
+            questions[question]['question_ids'].add(question_id)
+            continue
+        question_type = ballot['question_type']
+        questions[question] = {
+            'question_ids': set([question_id]),
+            'question_type': question_type,
+        }
+    for question, question_info in questions.items():
+        question_info['question_ids'] = list(question_info['question_ids'])
+        question_info['question'] = question
+        question_info['question_result_uuid'] = uuid4().hex
+        if question_info['question_type'] not in ['ranking', 'choices']:
+            metadata['ignored_questions'].append(question_info.copy())
+        else:
+            metadata['questions'].append(question_info.copy())
+    questions = {question: question_info for question, question_info in questions.items(
+    ) if question_info['question_type'] in ['ranking', 'choices']}
+    questions_ = {}
+    for question, question_info in questions.items():
+        question_ballots = [ballot for ballot in ballots if ballot['question_id']
+                            in question_info['question_ids'] and ballot['answer']]
+        voter_id_list = [question_ballot['voter_id_hash']
+                         for question_ballot in question_ballots]
+        if len(set(voter_id_list)) != len(voter_id_list):
+            metadata['warnings'].append(
+                f'Question "{question}" has multiple ballots from the same voter, did not calculate results')
+            continue
+        answers = [question_ballot['answer']
+                   for question_ballot in question_ballots]
+        questions_[question] = question_info
+        questions_[question]['answers'] = answers
+    questions = questions_
+    results_id = uuid4().hex
+    current_results_folder = f'app/static/results/{results_id}'
+    os.makedirs(current_results_folder)
+    for question, question_info in questions.items():
+        if question_info['question_type'] == 'choices':
+            question_results = Counter(question_info['answers'])
+            question_info['results'] = [{'choice': choice, 'votes': votes}
+                                        for choice, votes in question_results.items()]
+        elif question_info['question_type'] == 'ranking':
+            results = {}
+            ballots = [Ballot([a.strip() for a in answer.split(',')]) for answer in question_info['answers']]
+            pairs = get_pairs(ballots)
+            pairs = sort_pairs(pairs, ballots)
+            results['pairs'] = [{'winner': pair.winner, 'winner_votes': pair.winner_votes, 'non_winner': pair.non_winner, 'non_winner_votes': pair.non_winner_votes} for pair in pairs]
+            lock_graph = build_lock_graph(pairs)
+            nx.draw_networkx(lock_graph, with_labels=True, label=question)
+            plt.savefig(f'{current_results_folder}/{question_info["question_result_uuid"]}.png')
+            winner = get_winner_from_graph(lock_graph)
+            results['winner'] = winner
+            question_info['results'] = results
+        else:
+            metadata['warnings'].append(f'Did not calculate results for question "{question}"')
+        del question_info['answers']
+        json.dump(question_info, open(f'{current_results_folder}/{question_info["question_result_uuid"]}.json', 'w'))
+    json.dump(metadata, open(f'{current_results_folder}/metadata.json', 'w'))
+    shutil.make_archive(
+        current_results_folder, 'zip', current_results_folder)
+    db.execute('UPDATE Stats SET results_id = ?', (results_id,))
+    db.commit()
+    return redirect(url_for('dashboard.results'))
+
+
+@bp.route('/results/download')
+def download_results():
+    db = get_db()
+    results_id = db.execute('SELECT results_id FROM Stats').fetchone()[0]
+    if results_id is None:
+        flasher('No results to download', 'danger')
+        return redirect(url_for('dashboard.results'))
+    return redirect(url_for('static', filename=f'results/{results_id}.zip'))
+
+
+@bp.route('/results/export-ballots')
+def export_ballots():
+    db = get_db()
+    ballot_records = db.execute(
+        'SELECT * FROM Questions JOIN Answers ON Questions.question_id = Answers.question_id JOIN Voters ON Answers.voter_id_hash = Voters.voter_id_hash').fetchall()
+    questions = set()
+    voters = defaultdict(dict)
+    for record in ballot_records:
+        if record['question_type'] == 'voter_id':
+            continue
+        question = record['question'] or record['question_id']
+        questions.add(question)
+        voter_id_hash = record['voter_id_hash']
+        voters[voter_id_hash]['voted_at'] = record['voted_at']
+        answer = record['answer']
+        if record['question_type'] == 'ranking':
+            answer = ';'.join([a.strip() for a in answer.split(',')])
+            if answer != '':
+                answer += ';'
+        voters[voter_id_hash][question] = answer
+    questions = list(questions)
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = 'Sheet1'
+    sheet.append(['Voter ID', 'Voted At'] + questions)
+    for voter_id_hash, voter in voters.items():
+        sheet.append([voter_id_hash, voter['voted_at']] +
+                     [voter.get(question, '') for question in questions])
+    output = io.BytesIO()
+    workbook.save(output)
+    return output.getvalue(), 200, {'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename="ballots.xlsx"'}
 
 
 @bp.route('/config', methods=['GET', 'POST'])
@@ -169,6 +344,8 @@ def dashboard_config():
                     return {'error': 'Questions must have unique question_id'}, 400
                 if [question.get('question_type') for question in questions].count('voter_id') > 1:
                     return {'error': 'Can only have one voter ID question'}, 400
+                if any([len(set([question['question_type'] for question in questions if question['question'] == question_name])) > 1 for question_name in [question['question'] for question in questions if question['question']]]):
+                    return {'error': 'Questions with the same name must have the same type'}, 400
                 db = get_db()
                 question_ids_db_records = db.execute(
                     'SELECT question_id FROM Questions').fetchall()

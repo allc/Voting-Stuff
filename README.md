@@ -13,5 +13,5 @@
 
    - In PowerShell: `$env:OAUTHLIB_RELAX_TOKEN_SCOPE=1`
    - On Linux: `OAUTHLIB_RELAX_TOKEN_SCOPE=1 python -m flask run`
-5. Set up Microsoft Forms with one only free-text question being the voter ID, other questions can be rankings or choices.
+5. Set up Microsoft Forms with one only free-text question being the voter ID (for public forms, private forms will use username part of logged in email as voter ID (assuming only one "@" in those email addresses)), other questions can be rankings or choices.
 6. In Power Automate (only supported on Work or School account), create a flow that triggers on new form responses, and get the response details, then send a POST request to `/api/ballot-form` with the body of `String(form_body)`, and the headers containing `X-API-Key` with the value in `secrets.json`

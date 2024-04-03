@@ -6,14 +6,67 @@
     <h1 class="title">Results</h1>
     <h2 class="subtitle">Exciting and important stuff</h2>
 
+    <p>
+        Questions with different ID but the same name are considered the same question.
+    </p>
+
+    <p>
+        Questions of type <code>voter_id</code> are not included in the results. Questions of type <code>ranking</code>
+        and <code>choices</code> will be calculated for results.
+    </p>
+
     <div class="box">
-        Voting form: <a href="{{ voting_form_url }}" target="_blank">{{ voting_form_url }}</a>
+        <a class="button is-warning" href="{{ url_for('dashboard.export_ballots') }}" download>
+            <span>Export Ballots</span>
+            <span class="icon">
+                <i class="fas fa-download"></i>
+            </span>
+        </a>
     </div>
 
     <div class="box">
-        {{ n_voters }} voters
+        <form method="post" action="{{ url_for('dashboard.update_results') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="field">
+                <div class="control">
+                    <button class="button is-warning">
+                        <span>Update Results</span>
+                        <span class="icon">
+                            <i class="fas fa-sync"></i>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </form>
+        <p>
+            Updated at {{ updated_at }}
+        </p>
+
+        {% if ignored_questions %}
         <br>
-        {{ n_voters_responded }} responded
+        <p>
+            Ignored questions:<br>
+            {% for ignored_question in ignored_questions %}
+            {{ ignored_question }}<br>
+            {% endfor %}
+        </p>
+        {% endif %}
+
+        {% if warnings %}
+        <br>
+        <p>
+            Warnings:<br>
+            {% for warning in warnings %}
+            {{ warning }}<br>
+            {% endfor %}
+        </p>
+        {% endif %}
+        <a class="button is-primary" href="{{ url_for('dashboard.download_results') }}">
+            <span>Download Results</span>
+            <span class="icon">
+                <i class="fas fa-download"></i>
+            </span>
+        </a>
     </div>
 
     <div class="box">
@@ -25,6 +78,34 @@
             <li>{{ question.question or question.question_id }}: <b>{{ question.n_responses }}</b> responses</li>
             {% endfor %}
         </ul>
+        <div>
+            {% for question in ranking_questions %}
+            <div>
+                <h2 class="is-size-4">{{ question.question }}</h2>
+                <p>
+                    <b>Winner</b>: {{ question.results.winner }}
+                </p>
+                <ul>
+                    {% for result in question.results.pairs %}
+                    <li>{{ result.winner }} ({{ result.winner_votes }}) vs {{ result.non_winner }} ({{ result.non_winner_votes }}) - margin: {{ result.winner_votes - result.non_winner_votes }}</li>
+                    {% endfor %}
+                </ul>
+                <img src="/static/results/{{ results_id }}/{{ question.question_result_uuid }}.png" alt="Ranking results">
+            </div>
+            {% endfor %}
+        </div>
+        <div>
+            {% for question in choices_questions %}
+            <div>
+                <h2 class="is-size-4">{{ question.question }}</h2>
+                <ul>
+                    {% for result in question.results %}
+                    <li>{{ result.choice }}: <b>{{ result.votes }}</b> votes</li>
+                    {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
 
