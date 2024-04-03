@@ -239,7 +239,7 @@ def update_results():
             pairs = sort_pairs(pairs, ballots)
             results['pairs'] = [{'winner': pair.winner, 'winner_votes': pair.winner_votes, 'non_winner': pair.non_winner, 'non_winner_votes': pair.non_winner_votes} for pair in pairs]
             lock_graph = build_lock_graph(pairs)
-            nx.draw_networkx(lock_graph, with_labels=True, label=question)
+            nx.draw_networkx(lock_graph, with_labels=True, label=question, arrowsize=20)
             plt.savefig(f'{current_results_folder}/{question_info["question_result_uuid"]}.png')
             winner = get_winner_from_graph(lock_graph)
             results['winner'] = winner

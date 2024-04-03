@@ -110,7 +110,7 @@ def profile():
 
 @bp.route('/status')
 def voter_status():
-    voter_id = request.args.get('voter').strip()
+    voter_id = request.args.get('voter', '').strip()
     if not voter_id:
         return render_template('status.html', voter_id=''), 200
     else:
