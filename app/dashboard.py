@@ -20,6 +20,8 @@ config, secrets = load_instance_config()
 @login_required
 def index():
     db = get_db()
+    config = dict(db.execute('SELECT * FROM Configuration').fetchone())
+    del config['id']
     n_voters = db.execute('SELECT COUNT(*) FROM Voters').fetchone()[0]
     n_voters_responded = db.execute(
         'SELECT COUNT(DISTINCT voter_id_hash) FROM Answers').fetchone()[0]
@@ -29,8 +31,9 @@ def index():
         n_responses = db.execute(
             'SELECT COUNT(*) FROM Answers WHERE question_id = ? and answer != ""', (question['question_id'],)).fetchone()[0]
         question['n_responses'] = n_responses
-    config = db.execute('SELECT * FROM Configuration').fetchone()
-    return render_template('dashboard/index.html', n_voters=n_voters, n_voters_responded=n_voters_responded, questions=questions, **config)
+    stats = dict(db.execute('SELECT * FROM Stats').fetchone())
+    del stats['id']
+    return render_template('dashboard/index.html', n_voters=n_voters, n_voters_responded=n_voters_responded, questions=questions, **config, **stats)
 
 
 @bp.route('/voters', methods=['GET', 'POST'])

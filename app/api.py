@@ -27,8 +27,10 @@ def api_key_required(view):
 @bp.route('/ballot-form', methods=['POST'])
 @api_key_required  # calling to this api has to be trusted
 def ballot_form():
-    metadata_fields = ['responder', 'submitDate']
     db = get_db()
+    db.execute('UPDATE Stats SET form_received_count = form_received_count + 1')
+    db.commit()
+    metadata_fields = ['responder', 'submitDate']
     if request.json['responder'] == 'anonymous':  # form for associate member only
         # Warning: assuming there is only one free-text question, and it's the voter ID
         voter_id_question_record = db.execute(
@@ -40,44 +42,43 @@ def ballot_form():
                 if question_id in metadata_fields:
                     continue
                 answer = answer.strip()
-                print(answer)
                 if re.match(r'^ASSOC\d+$', answer, re.IGNORECASE):
                     voter_id_question_id = question_id
                     break
         else:
             voter_id_question_id = voter_id_question_record['question_id']
         if voter_id_question_id is None:
-            return {'error': 'Associate member voter ID not found in request'}, 400
+            return reject_form('Associate member voter ID not found in request', 400)
         voter_id = request.json.get(voter_id_question_id).strip()
         if voter_id is None:
-            return {'error': 'Voter ID not found in request'}, 400
+            return reject_form('Voter ID not found in request', 400)
         # only associate member voter ID can be user submitted through the form field
         if not re.match(r'^ASSOC\d+$', voter_id, re.IGNORECASE):
-            return {'error': 'Not associate member voter ID'}, 403
+            return reject_form('Not associate member voter ID', 403)
         voter_id_hash = get_hash(voter_id, to_lower=True)
         voter_record = db.execute(
             'SELECT * FROM Voters WHERE voter_id_hash = ?', (voter_id_hash,)).fetchone()
         if voter_record is None:
-            return {'error': 'Invalid voter ID'}, 403
+            return reject_form('Invalid voter ID', 403)
         if voter_record['voted_at']:
-            return {'error': 'Voter has already voted'}, 403
+            return reject_form('Voter has already voted', 403)
     else:
         voter_id_question_id = None
-        # voter ID is the email address without domain, assuming email is in simple format
+        # voter ID is the email address without domain, assuming email and not edge cases
         voter_id = request.json['responder'].strip().split('@')[0]
         voter_id_hash = get_hash(voter_id, to_lower=True)
         voter_record = db.execute(
             'SELECT * FROM Voters WHERE voter_id_hash = ?', (voter_id_hash,)).fetchone()
         if voter_record is None:
-            if request.headers.get('X-Do-Not-Check-Voter-ID') == 'true':
+            if request.headers.get('X-Eligible-Voter-ID') == 'true': # forms are always submitted by eligible voters, still checks if the voter has voted
                 voter_id_hash = get_hash(voter_id)
                 db.execute(
                     'INSERT INTO Voters (voter_id_hash) VALUES (?)', (voter_id_hash,))
             else:
-                return {'error': 'Invalid voter ID'}, 403
+                return reject_form('Invalid voter ID', 403)
         else:
             if voter_record['voted_at']:
-                return {'error': 'Voter has already voted'}, 403
+                return reject_form('Voter has already voted', 403)
     for question_id, answer in request.json.items():
         if question_id in metadata_fields:
             continue
@@ -87,6 +88,18 @@ def ballot_form():
                    (voter_id_hash, question_id, answer))
     db.execute('UPDATE voters SET voted_at = ? WHERE voter_id_hash = ?',
                (request.json['submitDate'], voter_id_hash))
+    db.commit()
+    return accept_form()
+
+def reject_form(error_message, status_code):
+    db = get_db()
+    db.execute('UPDATE Stats SET form_rejected_count = form_rejected_count + 1')
+    db.commit()
+    return {'error': error_message}, status_code
+
+def accept_form():
+    db = get_db()
+    db.execute('UPDATE Stats SET form_accepted_count = form_accepted_count + 1')
     db.commit()
     return {'success': True}
 

@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS Voters;
 DROP TABLE IF EXISTS Configuration;
 DROP TABLE IF EXISTS Questions;
 DROP TABLE IF EXISTS Answers;
+DROP TABLE IF EXISTS Stats;
 
 CREATE TABLE Voters (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,3 +42,12 @@ CREATE TABLE Configuration (
 );
 
 INSERT INTO Configuration (voting_form_url, form_voter_id_field) VALUES ('', '');
+
+CREATE TABLE Stats (
+    id          INTEGER PRIMARY KEY DEFAULT 0,
+    form_received_count INTEGER DEFAULT 0,
+    form_accepted_count INTEGER DEFAULT 0,
+    form_rejected_count INTEGER DEFAULT 0
+);
+
+INSERT INTO Stats (form_received_count, form_accepted_count, form_rejected_count) VALUES (0, 0, 0);
