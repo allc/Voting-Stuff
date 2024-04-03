@@ -115,7 +115,7 @@ def voter_status():
         return render_template('status.html', voter_id=''), 200
     else:
         db = get_db()
-        voter_record = db.execute('SELECT * FROM voters WHERE voter_id_hash = ?', (get_hash(voter_id),)).fetchone()
+        voter_record = db.execute('SELECT * FROM voters WHERE voter_id_hash = ?', (get_hash(voter_id, to_lower=True),)).fetchone()
         if voter_record is None:
             color = 'danger'
             message = 'Invalid voter ID'
