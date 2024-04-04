@@ -6,7 +6,7 @@ staging/
 .DS_Store
 .vscode/
 voters.txt
-database.sqlite
+*.sqlite
 config.json
 .env/
 app/static/results/
