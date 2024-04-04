@@ -144,6 +144,7 @@ def download_voters():
 
 
 @bp.route('/results')
+@login_required
 def results():
     db = get_db()
     results_id = db.execute('SELECT results_id FROM Stats').fetchone()[0]
