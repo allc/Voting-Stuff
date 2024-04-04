@@ -178,6 +178,7 @@ def results():
 
 
 @bp.route('/results/update', methods=['POST'])
+@login_required
 def update_results():
     db = get_db()
     metadata = {
@@ -259,6 +260,7 @@ def update_results():
 
 
 @bp.route('/results/download')
+@login_required
 def download_results():
     db = get_db()
     results_id = db.execute('SELECT results_id FROM Stats').fetchone()[0]
@@ -269,6 +271,7 @@ def download_results():
 
 
 @bp.route('/results/export-ballots')
+@login_required
 def export_ballots():
     db = get_db()
     ballot_records = db.execute(
