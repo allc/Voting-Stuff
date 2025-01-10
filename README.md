@@ -1,4 +1,10 @@
-# Voting Stuff
+# Voting Web UI
+
+The experimental app to collect votes via Power Automate requesting webhook on Microsoft Form submissions. For specific students organisations.
+
+Limitations due to Power Automate:
+- Webhook requests may fail without retrys
+- Webhook requests does not contain the names of form question fields, needs to manually config the map between the names and IDs
 
 ## How to run?
 
